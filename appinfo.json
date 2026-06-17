@@ -17,10 +17,10 @@
     "handStyle": 3,
     "displaySeconds": 4,
     "hourVibration": 5,
-    "weatherTemperature": 7,
-    "weatherCondition": 8,
-    "useFahrenheit": 9,
-    "accentColor": 10
+    "weatherTemperature": 6,
+    "weatherCondition": 7,
+    "useFahrenheit": 8,
+    "accentColor": 9
   },
   "resources": {
     "media": [
