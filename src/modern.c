@@ -1,4 +1,5 @@
 #include <pebble.h>
+#include <locale.h>
 
 // ---------------------------------------------------------------------------
 // Enumerations -- values must match those in src/pkjs/config.js
@@ -805,6 +806,7 @@ static void load_persisted_settings(void) {
 // ---------------------------------------------------------------------------
 
 static void init(void) {
+  setlocale(LC_ALL, "");
   load_persisted_settings();
 
   s_window = window_create();
