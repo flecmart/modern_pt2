@@ -142,6 +142,7 @@ static uint32_t  s_hour_angle_anim   = 0;
 static uint32_t  s_minute_angle_anim = 0;
 static int32_t   s_second_angle_anim = 0;
 static AppTimer *s_anim_timer        = NULL;
+static struct tm s_tick_time; // shared snapshot, updated once per tick
 
 // ---------------------------------------------------------------------------
 // Hand geometry for Emery (200x228)
@@ -336,19 +337,19 @@ static void battery_bar_update_proc(Layer *layer, GContext *ctx) {
   BatteryChargeState bcs = battery_state_service_peek();
   int fill_w = BAT_BAR_W * bcs.charge_percent / 100;
 
-  // Dim unfilled portion
+  // Dim unfilled portion (layer origin = BAT_BAR_X, BAT_BAR_Y-1; draw at local y=1)
   graphics_context_set_stroke_color(ctx, GColorDarkGray);
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_line(ctx,
-      GPoint(BAT_BAR_X, BAT_BAR_Y),
-      GPoint(BAT_BAR_X + BAT_BAR_W - 1, BAT_BAR_Y));
+      GPoint(0, 1),
+      GPoint(BAT_BAR_W - 1, 1));
 
   // Bright filled portion on top
   if (fill_w > 0) {
     graphics_context_set_stroke_color(ctx, s_accent_color);
     graphics_draw_line(ctx,
-        GPoint(BAT_BAR_X, BAT_BAR_Y),
-        GPoint(BAT_BAR_X + fill_w - 1, BAT_BAR_Y));
+        GPoint(0, 1),
+        GPoint(fill_w - 1, 1));
   }
 }
 
@@ -387,8 +388,7 @@ static void draw_hand_path(GContext *ctx, GPath *path, GPath *diamond) {
 // ---------------------------------------------------------------------------
 
 static void hour_update_proc(Layer *layer, GContext *ctx) {
-  time_t      now = time(NULL);
-  struct tm  *t   = localtime(&now);
+  struct tm  *t   = &s_tick_time;
   unsigned int angle = (unsigned)(t->tm_hour % 12) * 30 + t->tm_min / 2;
 
   if (s_anim_state < ANIM_HOURS) {
@@ -416,8 +416,7 @@ static void hour_update_proc(Layer *layer, GContext *ctx) {
 // ---------------------------------------------------------------------------
 
 static void minute_update_proc(Layer *layer, GContext *ctx) {
-  time_t      now = time(NULL);
-  struct tm  *t   = localtime(&now);
+  struct tm  *t   = &s_tick_time;
   unsigned int angle = (unsigned)t->tm_min * 6 + (unsigned)t->tm_sec / 10;
 
   if (s_anim_state < ANIM_MINUTES) {
@@ -445,8 +444,7 @@ static void second_update_proc(Layer *layer, GContext *ctx) {
   GRect  bounds = layer_get_bounds(layer);
   GPoint center = grect_center_point(&bounds);
 
-  time_t     now          = time(NULL);
-  struct tm *t            = localtime(&now);
+  struct tm *t            = &s_tick_time;
   int32_t    second_angle = (int32_t)t->tm_sec * (TRIG_MAX_ANGLE / 60);
   GPoint tip;
 
@@ -533,6 +531,8 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     return;
   }
 
+  s_tick_time = *tick_time;
+
   bool is_new_minute;
   if (s_display_seconds) {
     if (units_changed & SECOND_UNIT) {
@@ -555,13 +555,8 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
         tick_time->tm_hour >= 8 && tick_time->tm_hour <= 22) {
       vibes_double_pulse();
     }
-    if (tick_time->tm_min == 0 && tick_time->tm_hour == 0) {
-      refresh_all_slots(tick_time);
-      return;
-    }
+    refresh_all_slots(tick_time);
   }
-
-  refresh_all_slots(tick_time);
 }
 
 // ---------------------------------------------------------------------------
@@ -753,12 +748,16 @@ static void window_load(Window *window) {
   layer_set_hidden(s_second_layer, !s_display_seconds);
   layer_add_child(root, s_second_layer);
 
-  s_center_layer = layer_create(bounds);
+  s_center_layer = layer_create(GRect(
+      bounds.size.w / 2 - (CENTER_OUTER_R + 2),
+      bounds.size.h / 2 - (CENTER_OUTER_R + 2),
+      (CENTER_OUTER_R + 2) * 2,
+      (CENTER_OUTER_R + 2) * 2));
   layer_set_update_proc(s_center_layer, center_update_proc);
   layer_add_child(root, s_center_layer);
 
   // Battery bar + pebble logo (above hands, below info text)
-  s_battery_bar_layer = layer_create(bounds);
+  s_battery_bar_layer = layer_create(GRect(BAT_BAR_X, BAT_BAR_Y - 1, BAT_BAR_W, 3));
   layer_set_update_proc(s_battery_bar_layer, battery_bar_update_proc);
   layer_add_child(root, s_battery_bar_layer);
 
@@ -836,7 +835,8 @@ static void window_load(Window *window) {
   gpath_move_to(s_minute_diamond, center);
 
   time_t now = time(NULL);
-  refresh_all_slots(localtime(&now));
+  s_tick_time = *localtime(&now);
+  refresh_all_slots(&s_tick_time);
 }
 
 static void window_unload(Window *window) {
@@ -924,7 +924,7 @@ static void init(void) {
 
   app_message_register_inbox_received(inbox_received_handler);
   app_message_register_inbox_dropped(inbox_dropped_handler);
-  app_message_open(256, 64);
+  app_message_open(512, 64);
 }
 
 static void deinit(void) {
