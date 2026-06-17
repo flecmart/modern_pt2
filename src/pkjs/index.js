@@ -1,6 +1,31 @@
 var Clay = require('pebble-clay');
 var clayConfig = require('./config');
-var clay = new Clay(clayConfig);
+var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
+
+Pebble.addEventListener('showConfiguration', function() {
+  Pebble.openURL(clay.generateUrl());
+});
+
+Pebble.addEventListener('webviewclosed', function(e) {
+  if (!e || !e.response) return;
+
+  var dict = clay.getSettings(e.response);
+
+  Object.keys(dict).forEach(function(key) {
+    if (typeof dict[key] === 'string') {
+      var parsed = parseInt(dict[key], 10);
+      if (!isNaN(parsed)) {
+        dict[key] = parsed;
+      }
+    }
+  });
+
+  Pebble.sendAppMessage(dict, function() {
+    console.log('Settings sent to watch');
+  }, function(err) {
+    console.log('Settings send failed: ' + JSON.stringify(err));
+  });
+});
 
 function getUseFahrenheit() {
   try {
