@@ -5,6 +5,6 @@
   "author": "flecmart",
   "license": "MIT",
   "dependencies": {
-    "pebble-clay": "^1.4.0"
+    "pebble-clay": "^1.0.4"
   }
 }

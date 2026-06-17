@@ -68,14 +68,22 @@ module.exports = [
         "defaultValue": "0",
         "options": [
           { "label": "Solid (Original)",   "value": "0" },
-          { "label": "Outline (Hollow)",   "value": "1" },
-          { "label": "Skeleton (Thin line)", "value": "2" }
+          { "label": "Outline (Hollow)",   "value": "1" }
         ]
+      },
+    ]
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "heading",
+        "defaultValue": "Weather"
       },
       {
         "type": "toggle",
-        "messageKey": "inverted",
-        "label": "Light Background",
+        "messageKey": "useFahrenheit",
+        "label": "Use Fahrenheit (°F)",
         "defaultValue": false
       }
     ]

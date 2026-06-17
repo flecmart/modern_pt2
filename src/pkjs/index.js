@@ -2,26 +2,27 @@ var Clay = require('pebble-clay');
 var clayConfig = require('./config');
 var clay = new Clay(clayConfig);
 
-// WMO weather code -> simplified condition integer
-// 0=clear, 1=partly cloudy, 2=cloudy, 3=rain, 4=snow, 5=thunderstorm
+var useFahrenheit = false;
+
 function wmoToCondition(code) {
-  if (code === 0)                                return 0; // clear sky
-  if (code <= 2)                                 return 1; // mainly/partly clear
-  if (code === 3)                                return 2; // overcast
-  if (code >= 51 && code <= 67)                  return 3; // drizzle / rain
-  if (code >= 71 && code <= 77)                  return 4; // snow
-  if (code >= 80 && code <= 82)                  return 3; // showers
-  if (code === 85 || code === 86)                return 4; // snow showers
-  if (code >= 95 && code <= 99)                  return 5; // thunderstorm
-  return 2; // default: cloudy
+  if (code === 0)                                return 0;
+  if (code <= 2)                                 return 1;
+  if (code === 3)                                return 2;
+  if (code >= 51 && code <= 67)                  return 3;
+  if (code >= 71 && code <= 77)                  return 4;
+  if (code >= 80 && code <= 82)                  return 3;
+  if (code === 85 || code === 86)                return 4;
+  if (code >= 95 && code <= 99)                  return 5;
+  return 2;
 }
 
 function fetchWeather(latitude, longitude) {
+  var unit = useFahrenheit ? 'fahrenheit' : 'celsius';
   var url = 'https://api.open-meteo.com/v1/forecast' +
     '?latitude=' + latitude +
     '&longitude=' + longitude +
     '&current_weather=true' +
-    '&temperature_unit=celsius';
+    '&temperature_unit=' + unit;
 
   var req = new XMLHttpRequest();
   req.open('GET', url, true);
@@ -72,4 +73,8 @@ Pebble.addEventListener('ready', function() {
 
 Pebble.addEventListener('appmessage', function(e) {
   console.log('AppMessage received from watch: ' + JSON.stringify(e.payload));
+  if (e.payload.useFahrenheit !== undefined) {
+    useFahrenheit = !!e.payload.useFahrenheit;
+    requestWeather();
+  }
 });

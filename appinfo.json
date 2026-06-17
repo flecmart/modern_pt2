@@ -5,7 +5,8 @@
   "companyName": "flecmart",
   "versionLabel": "4.0.0",
   "sdkVersion": "3",
-  "targetPlatforms": ["aplite", "basalt", "chalk", "diorite", "emery"],
+  "targetPlatforms": ["emery"],
+  "enableMultiJS": true,
   "watchapp": {
     "watchface": true
   },
@@ -16,35 +17,67 @@
     "handStyle": 3,
     "displaySeconds": 4,
     "hourVibration": 5,
-    "inverted": 6,
     "weatherTemperature": 7,
-    "weatherCondition": 8
+    "weatherCondition": 8,
+    "useFahrenheit": 9
   },
   "resources": {
     "media": [
       {
-        "type": "font",
-        "name": "FONT_DIGITALDREAM_NARROW_12",
-        "file": "src/fonts/DIGITALDREAMNARROW.ttf",
-        "characterRegex": "[0-9A-Za-z. :]"
+        "type": "png",
+        "name": "IMAGE_BACKGROUND",
+        "file": "src/images/modern_background_new_emery.png"
       },
       {
         "type": "font",
         "name": "FONT_DIGITALDREAM_NARROW_16",
         "file": "src/fonts/DIGITALDREAMNARROW.ttf",
-        "characterRegex": "[0-9A-Za-z. :]"
+        "characterRegex": "[0-9A-Za-z. :%]"
       },
       {
-        "type": "font",
-        "name": "FONT_ORBITRON_MEDIUM_12",
-        "file": "src/fonts/orbitron-medium.otf",
-        "characterRegex": "[0-9]"
+        "type": "png",
+        "name": "ICON_HEART",
+        "file": "src/images/icon_heart.png"
       },
       {
-        "type": "font",
-        "name": "FONT_ORBITRON_MEDIUM_16",
-        "file": "src/fonts/orbitron-medium.otf",
-        "characterRegex": "[0-9]"
+        "type": "png",
+        "name": "ICON_W_CLEAR",
+        "file": "src/images/icon_w_clear.png"
+      },
+      {
+        "type": "png",
+        "name": "ICON_W_PCLOUDY",
+        "file": "src/images/icon_w_pcloudy.png"
+      },
+      {
+        "type": "png",
+        "name": "ICON_W_CLOUDY",
+        "file": "src/images/icon_w_cloudy.png"
+      },
+      {
+        "type": "png",
+        "name": "ICON_W_RAIN",
+        "file": "src/images/icon_w_rain.png"
+      },
+      {
+        "type": "png",
+        "name": "ICON_W_SNOW",
+        "file": "src/images/icon_w_snow.png"
+      },
+      {
+        "type": "png",
+        "name": "ICON_W_THUNDER",
+        "file": "src/images/icon_w_thunder.png"
+      },
+      {
+        "type": "png",
+        "name": "ICON_BATTERY",
+        "file": "src/images/icon_battery.png"
+      },
+      {
+        "type": "png",
+        "name": "ICON_STEPS",
+        "file": "src/images/icon_steps.png"
       }
     ]
   }

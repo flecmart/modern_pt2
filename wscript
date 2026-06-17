@@ -32,8 +32,7 @@ def build(ctx):
 
     ctx.set_group('bundle')
     ctx.pbl_bundle(binaries=binaries,
-                   js=ctx.path.ant_glob('src/pkjs/**/*.js') +
-                      ctx.path.ant_glob('node_modules/pebble-clay/**/*.js') +
-                      ctx.path.ant_glob('node_modules/pebble-clay/**/*.json'))
+                   js=ctx.path.ant_glob('src/pkjs/**/*.js'),
+                   js_entry_file='src/pkjs/index.js')
 
 import os
