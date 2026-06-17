@@ -72,6 +72,25 @@ module.exports = [
           { "label": "Diamond",  "value": "2" }
         ]
       },
+      {
+        "type": "select",
+        "messageKey": "accentColor",
+        "label": "Info & Logo Color",
+        "defaultValue": "255",
+        "options": [
+          { "label": "White",          "value": "255" },
+          { "label": "Cyan",           "value": "207" },
+          { "label": "Electric Blue",  "value": "195" },
+          { "label": "Mint Green",     "value": "206" },
+          { "label": "Green",          "value": "204" },
+          { "label": "Yellow",         "value": "252" },
+          { "label": "Chrome Yellow",  "value": "249" },
+          { "label": "Orange",         "value": "248" },
+          { "label": "Red",            "value": "240" },
+          { "label": "Magenta",        "value": "243" },
+          { "label": "Vivid Violet",   "value": "199" }
+        ]
+      }
     ]
   },
   {

@@ -19,7 +19,8 @@
     "hourVibration": 5,
     "weatherTemperature": 7,
     "weatherCondition": 8,
-    "useFahrenheit": 9
+    "useFahrenheit": 9,
+    "accentColor": 10
   },
   "resources": {
     "media": [

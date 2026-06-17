@@ -29,10 +29,11 @@ typedef enum {
 #define PERSIST_HAND_STYLE     3
 #define PERSIST_SECONDS        4
 #define PERSIST_VIBRATION      5
-#define PERSIST_WEATHER_TEMP   7
-#define PERSIST_WEATHER_COND   8
-#define PERSIST_HAS_WEATHER    9
-#define PERSIST_USE_FAHRENHEIT 10
+#define PERSIST_WEATHER_TEMP   6
+#define PERSIST_WEATHER_COND   7
+#define PERSIST_HAS_WEATHER    8
+#define PERSIST_USE_FAHRENHEIT 9
+#define PERSIST_ACCENT_COLOR   10
 
 // ---------------------------------------------------------------------------
 // Startup animation state machine
@@ -84,6 +85,7 @@ static int       s_temperature     = 0;
 static int       s_weather_cond    = 0;
 static bool      s_has_weather     = false;
 static bool      s_use_fahrenheit  = false;
+static GColor    s_accent_color    = { .argb = 0xFF }; // GColorWhite default
 
 // ---------------------------------------------------------------------------
 // Layer / window globals
@@ -343,7 +345,7 @@ static void battery_bar_update_proc(Layer *layer, GContext *ctx) {
 
   // Bright filled portion on top
   if (fill_w > 0) {
-    graphics_context_set_stroke_color(ctx, GColorWhite);
+    graphics_context_set_stroke_color(ctx, s_accent_color);
     graphics_draw_line(ctx,
         GPoint(BAT_BAR_X, BAT_BAR_Y),
         GPoint(BAT_BAR_X + fill_w - 1, BAT_BAR_Y));
@@ -599,6 +601,40 @@ static void resubscribe_tick(void) {
       s_display_seconds ? SECOND_UNIT : MINUTE_UNIT, tick_handler);
 }
 
+static void tint_bitmap(GBitmap *bmp, GColor color) {
+  GColor *palette = gbitmap_get_palette(bmp);
+  if (!palette) return;
+  int n = 0;
+  switch (gbitmap_get_format(bmp)) {
+    case GBitmapFormat1BitPalette: n = 2;  break;
+    case GBitmapFormat2BitPalette: n = 4;  break;
+    case GBitmapFormat4BitPalette: n = 16; break;
+    default: return;
+  }
+  for (int i = 0; i < n; i++) {
+    if ((palette[i].argb & 0xC0) == 0xC0)
+      palette[i] = color;
+  }
+}
+
+static void apply_accent_color(void) {
+  GColor c = s_accent_color;
+  text_layer_set_text_color(s_left_text, c);
+  text_layer_set_text_color(s_right_text, c);
+  text_layer_set_text_color(s_bottom_text, c);
+
+  tint_bitmap(s_logo_bitmap, c);
+  bitmap_layer_set_bitmap(s_logo_layer, s_logo_bitmap);
+
+  tint_bitmap(s_heart_bitmap, c);
+  for (int i = 0; i < 6; i++)
+    tint_bitmap(s_weather_bitmaps[i], c);
+  tint_bitmap(s_battery_bitmap, c);
+  tint_bitmap(s_steps_bitmap, c);
+
+  layer_mark_dirty(s_battery_bar_layer);
+}
+
 static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   bool layout_changed  = false;
   bool style_changed   = false;
@@ -638,6 +674,15 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     bool v = (bool)t->value->int32;
     if (v != s_use_fahrenheit) { s_use_fahrenheit = v; weather_changed = true; }
     persist_write_bool(PERSIST_USE_FAHRENHEIT, v);
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_accentColor))) {
+    uint8_t v = (uint8_t)t->value->int32;
+    GColor nc = (GColor){ .argb = v };
+    if (!gcolor_equal(nc, s_accent_color)) {
+      s_accent_color = nc;
+      apply_accent_color();
+    }
+    persist_write_int(PERSIST_ACCENT_COLOR, (int)v);
   }
 
   if ((t = dict_find(iter, MESSAGE_KEY_weatherTemperature))) {
@@ -728,7 +773,6 @@ static void window_load(Window *window) {
   text_layer_set_font(s_left_text, s_slot_font);
   text_layer_set_overflow_mode(s_left_text, GTextOverflowModeWordWrap);
   text_layer_set_text_alignment(s_left_text, GTextAlignmentCenter);
-  text_layer_set_text_color(s_left_text, GColorWhite);
   text_layer_set_background_color(s_left_text, GColorClear);
   layer_add_child(root, text_layer_get_layer(s_left_text));
 
@@ -736,7 +780,6 @@ static void window_load(Window *window) {
   text_layer_set_font(s_right_text, s_slot_font);
   text_layer_set_overflow_mode(s_right_text, GTextOverflowModeWordWrap);
   text_layer_set_text_alignment(s_right_text, GTextAlignmentCenter);
-  text_layer_set_text_color(s_right_text, GColorWhite);
   text_layer_set_background_color(s_right_text, GColorClear);
   layer_add_child(root, text_layer_get_layer(s_right_text));
 
@@ -744,7 +787,6 @@ static void window_load(Window *window) {
   text_layer_set_font(s_bottom_text, s_slot_font);
   text_layer_set_overflow_mode(s_bottom_text, GTextOverflowModeWordWrap);
   text_layer_set_text_alignment(s_bottom_text, GTextAlignmentCenter);
-  text_layer_set_text_color(s_bottom_text, GColorWhite);
   text_layer_set_background_color(s_bottom_text, GColorClear);
   layer_add_child(root, text_layer_get_layer(s_bottom_text));
 
@@ -780,6 +822,7 @@ static void window_load(Window *window) {
   layer_add_child(root, bitmap_layer_get_layer(s_steps_icon_layer));
 
   position_slot_layers();
+  apply_accent_color();
 
   // GPath objects pivoted to screen center
   s_hour_path      = gpath_create(&HOUR_HAND_INFO);
@@ -857,6 +900,8 @@ static void load_persisted_settings(void) {
     s_has_weather = persist_read_bool(PERSIST_HAS_WEATHER);
   if (persist_exists(PERSIST_USE_FAHRENHEIT))
     s_use_fahrenheit = persist_read_bool(PERSIST_USE_FAHRENHEIT);
+  if (persist_exists(PERSIST_ACCENT_COLOR))
+    s_accent_color = (GColor){ .argb = (uint8_t)persist_read_int(PERSIST_ACCENT_COLOR) };
 }
 
 // ---------------------------------------------------------------------------
