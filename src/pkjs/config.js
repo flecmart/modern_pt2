@@ -65,10 +65,11 @@ module.exports = [
         "type": "select",
         "messageKey": "handStyle",
         "label": "Hand Style",
-        "defaultValue": "0",
+        "defaultValue": "2",
         "options": [
-          { "label": "Solid (Original)",   "value": "0" },
-          { "label": "Outline (Hollow)",   "value": "1" }
+          { "label": "Solid",     "value": "0" },
+          { "label": "Outline",  "value": "1" },
+          { "label": "Diamond",  "value": "2" }
         ]
       },
     ]

@@ -78,6 +78,11 @@
         "type": "png",
         "name": "ICON_STEPS",
         "file": "src/images/icon_steps.png"
+      },
+      {
+        "type": "png",
+        "name": "PEBBLE_LOGO",
+        "file": "src/images/pebble_logo.png"
       }
     ]
   }

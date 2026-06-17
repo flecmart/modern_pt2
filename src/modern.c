@@ -16,6 +16,7 @@ typedef enum {
 typedef enum {
   HAND_SOLID    = 0,
   HAND_OUTLINE  = 1,
+  HAND_DIAMOND  = 2,
 } HandStyle;
 
 // ---------------------------------------------------------------------------
@@ -63,6 +64,11 @@ typedef enum {
 #define BAT_BAR_X         75
 #define BAT_BAR_Y         74
 
+#define LOGO_X            73
+#define LOGO_Y            59
+#define LOGO_W            66
+#define LOGO_H            17
+
 // ---------------------------------------------------------------------------
 // Runtime settings
 // ---------------------------------------------------------------------------
@@ -70,7 +76,7 @@ typedef enum {
 static SlotType  s_left_slot       = SLOT_WEATHER;
 static SlotType  s_right_slot      = SLOT_HEARTRATE;
 static SlotType  s_bottom_slot     = SLOT_DATE;
-static HandStyle s_hand_style      = HAND_SOLID;
+static HandStyle s_hand_style      = HAND_DIAMOND;
 static bool      s_display_seconds = false;
 static bool      s_hour_vibration  = false;
 
@@ -87,6 +93,9 @@ static Window      *s_window;
 
 static BitmapLayer *s_bg_bitmap_layer;
 static GBitmap     *s_bg_bitmap;
+
+static GBitmap     *s_logo_bitmap;
+static BitmapLayer *s_logo_layer;
 
 static Layer       *s_battery_bar_layer;
 static Layer       *s_hour_layer;
@@ -105,7 +114,9 @@ static char s_bottom_buf[32];
 static GFont s_slot_font;
 
 static GPath *s_hour_path;
+static GPath *s_hour_diamond;
 static GPath *s_minute_path;
+static GPath *s_minute_diamond;
 
 static GBitmap     *s_heart_bitmap;
 static BitmapLayer *s_hr_icon_layer;
@@ -118,6 +129,7 @@ static BitmapLayer *s_bat_icon_layer;
 
 static GBitmap     *s_steps_bitmap;
 static BitmapLayer *s_steps_icon_layer;
+
 
 // ---------------------------------------------------------------------------
 // Animation state
@@ -142,6 +154,15 @@ static const GPathInfo MINUTE_HAND_INFO = {
     { -6, -97 },
   }
 };
+static const GPathInfo MINUTE_DIAMOND_INFO = {
+  .num_points = 4,
+  .points = (GPoint []) {
+    {  0,  -6 },
+    {  4, -43 },
+    {  0, -80 },
+    { -4, -43 },
+  }
+};
 
 static const GPathInfo HOUR_HAND_INFO = {
   .num_points = 4,
@@ -150,6 +171,15 @@ static const GPathInfo HOUR_HAND_INFO = {
     {  6,  21 },
     {  6, -69 },
     { -6, -69 },
+  }
+};
+static const GPathInfo HOUR_DIAMOND_INFO = {
+  .num_points = 4,
+  .points = (GPoint []) {
+    {  0,  -6 },
+    {  4, -34 },
+    {  0, -62 },
+    { -4, -34 },
   }
 };
 
@@ -324,7 +354,7 @@ static void battery_bar_update_proc(Layer *layer, GContext *ctx) {
 // Hand drawing
 // ---------------------------------------------------------------------------
 
-static void draw_hand_path(GContext *ctx, GPath *path) {
+static void draw_hand_path(GContext *ctx, GPath *path, GPath *diamond) {
   switch (s_hand_style) {
     case HAND_SOLID:
       graphics_context_set_fill_color(ctx, GColorWhite);
@@ -337,6 +367,15 @@ static void draw_hand_path(GContext *ctx, GPath *path) {
       graphics_context_set_stroke_color(ctx, GColorWhite);
       graphics_context_set_stroke_width(ctx, 3);
       gpath_draw_outline(ctx, path);
+      break;
+
+    case HAND_DIAMOND:
+      graphics_context_set_fill_color(ctx, GColorWhite);
+      graphics_context_set_stroke_color(ctx, GColorBlack);
+      gpath_draw_filled(ctx, path);
+      gpath_draw_outline(ctx, path);
+      graphics_context_set_fill_color(ctx, GColorBlack);
+      gpath_draw_filled(ctx, diamond);
       break;
   }
 }
@@ -364,8 +403,10 @@ static void hour_update_proc(Layer *layer, GContext *ctx) {
     }
   }
 
-  gpath_rotate_to(s_hour_path, (TRIG_MAX_ANGLE / 360) * angle);
-  draw_hand_path(ctx, s_hour_path);
+  int32_t pebble_angle = (TRIG_MAX_ANGLE / 360) * angle;
+  gpath_rotate_to(s_hour_path,    pebble_angle);
+  gpath_rotate_to(s_hour_diamond, pebble_angle);
+  draw_hand_path(ctx, s_hour_path, s_hour_diamond);
 }
 
 // ---------------------------------------------------------------------------
@@ -388,8 +429,10 @@ static void minute_update_proc(Layer *layer, GContext *ctx) {
     }
   }
 
-  gpath_rotate_to(s_minute_path, (TRIG_MAX_ANGLE / 360) * angle);
-  draw_hand_path(ctx, s_minute_path);
+  int32_t pebble_angle = (TRIG_MAX_ANGLE / 360) * angle;
+  gpath_rotate_to(s_minute_path,    pebble_angle);
+  gpath_rotate_to(s_minute_diamond, pebble_angle);
+  draw_hand_path(ctx, s_minute_path, s_minute_diamond);
 }
 
 // ---------------------------------------------------------------------------
@@ -651,11 +694,6 @@ static void window_load(Window *window) {
   bitmap_layer_set_compositing_mode(s_bg_bitmap_layer, GCompOpSet);
   layer_add_child(root, bitmap_layer_get_layer(s_bg_bitmap_layer));
 
-  // Battery bar overlay
-  s_battery_bar_layer = layer_create(bounds);
-  layer_set_update_proc(s_battery_bar_layer, battery_bar_update_proc);
-  layer_add_child(root, s_battery_bar_layer);
-
   // Hand layers (drawn UNDER info slots)
   s_hour_layer = layer_create(bounds);
   layer_set_update_proc(s_hour_layer, hour_update_proc);
@@ -673,6 +711,17 @@ static void window_load(Window *window) {
   s_center_layer = layer_create(bounds);
   layer_set_update_proc(s_center_layer, center_update_proc);
   layer_add_child(root, s_center_layer);
+
+  // Battery bar + pebble logo (above hands, below info text)
+  s_battery_bar_layer = layer_create(bounds);
+  layer_set_update_proc(s_battery_bar_layer, battery_bar_update_proc);
+  layer_add_child(root, s_battery_bar_layer);
+
+  s_logo_bitmap = gbitmap_create_with_resource(RESOURCE_ID_PEBBLE_LOGO);
+  s_logo_layer = bitmap_layer_create(GRect(LOGO_X, LOGO_Y, LOGO_W, LOGO_H));
+  bitmap_layer_set_bitmap(s_logo_layer, s_logo_bitmap);
+  bitmap_layer_set_compositing_mode(s_logo_layer, GCompOpSet);
+  layer_add_child(root, bitmap_layer_get_layer(s_logo_layer));
 
   // Info slot text layers (on top of hands)
   s_left_text = text_layer_create(GRectZero);
@@ -733,11 +782,15 @@ static void window_load(Window *window) {
   position_slot_layers();
 
   // GPath objects pivoted to screen center
-  s_hour_path   = gpath_create(&HOUR_HAND_INFO);
-  s_minute_path = gpath_create(&MINUTE_HAND_INFO);
+  s_hour_path      = gpath_create(&HOUR_HAND_INFO);
+  s_hour_diamond   = gpath_create(&HOUR_DIAMOND_INFO);
+  s_minute_path    = gpath_create(&MINUTE_HAND_INFO);
+  s_minute_diamond = gpath_create(&MINUTE_DIAMOND_INFO);
   GPoint center = grect_center_point(&bounds);
-  gpath_move_to(s_hour_path,   center);
-  gpath_move_to(s_minute_path, center);
+  gpath_move_to(s_hour_path,      center);
+  gpath_move_to(s_hour_diamond,   center);
+  gpath_move_to(s_minute_path,    center);
+  gpath_move_to(s_minute_diamond, center);
 
   time_t now = time(NULL);
   refresh_all_slots(localtime(&now));
@@ -745,7 +798,9 @@ static void window_load(Window *window) {
 
 static void window_unload(Window *window) {
   gpath_destroy(s_hour_path);
+  gpath_destroy(s_hour_diamond);
   gpath_destroy(s_minute_path);
+  gpath_destroy(s_minute_diamond);
 
   layer_destroy(s_center_layer);
   layer_destroy(s_second_layer);
@@ -768,6 +823,8 @@ static void window_unload(Window *window) {
   }
   gbitmap_destroy(s_heart_bitmap);
 
+  bitmap_layer_destroy(s_logo_layer);
+  gbitmap_destroy(s_logo_bitmap);
   layer_destroy(s_battery_bar_layer);
   bitmap_layer_destroy(s_bg_bitmap_layer);
   gbitmap_destroy(s_bg_bitmap);
