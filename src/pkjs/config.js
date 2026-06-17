@@ -14,7 +14,7 @@ module.exports = [
         "type": "select",
         "messageKey": "leftSlot",
         "label": "Left (9 o'clock)",
-        "defaultValue": "0",
+        "defaultValue": "1",
         "options": [
           { "label": "None",       "value": "0" },
           { "label": "Weather",    "value": "1" },
@@ -28,7 +28,7 @@ module.exports = [
         "type": "select",
         "messageKey": "rightSlot",
         "label": "Right (3 o'clock)",
-        "defaultValue": "2",
+        "defaultValue": "3",
         "options": [
           { "label": "None",       "value": "0" },
           { "label": "Weather",    "value": "1" },
@@ -42,7 +42,7 @@ module.exports = [
         "type": "select",
         "messageKey": "bottomSlot",
         "label": "Bottom (6 o'clock)",
-        "defaultValue": "1",
+        "defaultValue": "2",
         "options": [
           { "label": "None",       "value": "0" },
           { "label": "Weather",    "value": "1" },

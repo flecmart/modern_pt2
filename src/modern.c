@@ -36,17 +36,6 @@ typedef enum {
 #define PERSIST_ACCENT_COLOR   10
 
 // ---------------------------------------------------------------------------
-// Startup animation state machine
-// ---------------------------------------------------------------------------
-
-#define ANIM_IDLE    0
-#define ANIM_START   1
-#define ANIM_HOURS   2
-#define ANIM_MINUTES 3
-#define ANIM_SECONDS 4
-#define ANIM_DONE    5
-
-// ---------------------------------------------------------------------------
 // Emery (200x228) constants
 // ---------------------------------------------------------------------------
 
@@ -133,16 +122,7 @@ static GBitmap     *s_steps_bitmap;
 static BitmapLayer *s_steps_icon_layer;
 
 
-// ---------------------------------------------------------------------------
-// Animation state
-// ---------------------------------------------------------------------------
-
-static int       s_anim_state        = ANIM_IDLE;
-static uint32_t  s_hour_angle_anim   = 0;
-static uint32_t  s_minute_angle_anim = 0;
-static int32_t   s_second_angle_anim = 0;
-static AppTimer *s_anim_timer        = NULL;
-static struct tm s_tick_time; // shared snapshot, updated once per tick
+static struct tm s_tick_time;
 
 // ---------------------------------------------------------------------------
 // Hand geometry for Emery (200x228)
@@ -388,26 +368,11 @@ static void draw_hand_path(GContext *ctx, GPath *path, GPath *diamond) {
 // ---------------------------------------------------------------------------
 
 static void hour_update_proc(Layer *layer, GContext *ctx) {
-  struct tm  *t   = &s_tick_time;
-  unsigned int angle = (unsigned)(t->tm_hour % 12) * 30 + t->tm_min / 2;
-
-  if (s_anim_state < ANIM_HOURS) {
-    angle = 0;
-  } else if (s_anim_state == ANIM_HOURS) {
-    if (s_hour_angle_anim == 0 && t->tm_hour >= 12) {
-      s_hour_angle_anim = 360;
-    }
-    s_hour_angle_anim += 6;
-    if (s_hour_angle_anim >= angle) {
-      s_anim_state = ANIM_MINUTES;
-    } else {
-      angle = s_hour_angle_anim;
-    }
-  }
-
-  int32_t pebble_angle = (TRIG_MAX_ANGLE / 360) * angle;
-  gpath_rotate_to(s_hour_path,    pebble_angle);
-  gpath_rotate_to(s_hour_diamond, pebble_angle);
+  struct tm *t = &s_tick_time;
+  int32_t angle = (TRIG_MAX_ANGLE / 360) *
+      ((unsigned)(t->tm_hour % 12) * 30 + t->tm_min / 2);
+  gpath_rotate_to(s_hour_path,    angle);
+  gpath_rotate_to(s_hour_diamond, angle);
   draw_hand_path(ctx, s_hour_path, s_hour_diamond);
 }
 
@@ -416,23 +381,11 @@ static void hour_update_proc(Layer *layer, GContext *ctx) {
 // ---------------------------------------------------------------------------
 
 static void minute_update_proc(Layer *layer, GContext *ctx) {
-  struct tm  *t   = &s_tick_time;
-  unsigned int angle = (unsigned)t->tm_min * 6 + (unsigned)t->tm_sec / 10;
-
-  if (s_anim_state < ANIM_MINUTES) {
-    angle = 0;
-  } else if (s_anim_state == ANIM_MINUTES) {
-    s_minute_angle_anim += 6;
-    if (s_minute_angle_anim >= angle) {
-      s_anim_state = s_display_seconds ? ANIM_SECONDS : ANIM_DONE;
-    } else {
-      angle = s_minute_angle_anim;
-    }
-  }
-
-  int32_t pebble_angle = (TRIG_MAX_ANGLE / 360) * angle;
-  gpath_rotate_to(s_minute_path,    pebble_angle);
-  gpath_rotate_to(s_minute_diamond, pebble_angle);
+  struct tm *t = &s_tick_time;
+  int32_t angle = (TRIG_MAX_ANGLE / 360) *
+      ((unsigned)t->tm_min * 6 + (unsigned)t->tm_sec / 10);
+  gpath_rotate_to(s_minute_path,    angle);
+  gpath_rotate_to(s_minute_diamond, angle);
   draw_hand_path(ctx, s_minute_path, s_minute_diamond);
 }
 
@@ -446,24 +399,9 @@ static void second_update_proc(Layer *layer, GContext *ctx) {
 
   struct tm *t            = &s_tick_time;
   int32_t    second_angle = (int32_t)t->tm_sec * (TRIG_MAX_ANGLE / 60);
-  GPoint tip;
-
-  if (s_anim_state < ANIM_SECONDS) {
-    tip = GPoint(center.x, center.y - SECOND_HAND_LEN);
-  } else if (s_anim_state == ANIM_SECONDS) {
-    s_second_angle_anim += TRIG_MAX_ANGLE / 60;
-    if (s_second_angle_anim >= second_angle) {
-      s_anim_state = ANIM_DONE;
-    }
-    int32_t draw_angle = (s_anim_state == ANIM_DONE) ? second_angle : s_second_angle_anim;
-    tip = GPoint(
-        center.x + SECOND_HAND_LEN * sin_lookup(draw_angle) / TRIG_MAX_RATIO,
-        center.y - SECOND_HAND_LEN * cos_lookup(draw_angle) / TRIG_MAX_RATIO);
-  } else {
-    tip = GPoint(
-        center.x + SECOND_HAND_LEN * sin_lookup(second_angle) / TRIG_MAX_RATIO,
-        center.y - SECOND_HAND_LEN * cos_lookup(second_angle) / TRIG_MAX_RATIO);
-  }
+  GPoint tip = GPoint(
+      center.x + SECOND_HAND_LEN * sin_lookup(second_angle) / TRIG_MAX_RATIO,
+      center.y - SECOND_HAND_LEN * cos_lookup(second_angle) / TRIG_MAX_RATIO);
 
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_context_set_stroke_width(ctx, 1);
@@ -485,52 +423,10 @@ static void center_update_proc(Layer *layer, GContext *ctx) {
 }
 
 // ---------------------------------------------------------------------------
-// Animation timer
-// ---------------------------------------------------------------------------
-
-static void anim_timer_callback(void *data) {
-  s_anim_timer = NULL;
-  switch (s_anim_state) {
-    case ANIM_START:
-      s_anim_state = ANIM_HOURS;
-      s_anim_timer = app_timer_register(50, anim_timer_callback, NULL);
-      break;
-    case ANIM_HOURS:
-      layer_mark_dirty(s_hour_layer);
-      s_anim_timer = app_timer_register(50, anim_timer_callback, NULL);
-      break;
-    case ANIM_MINUTES:
-      layer_mark_dirty(s_minute_layer);
-      s_anim_timer = app_timer_register(50, anim_timer_callback, NULL);
-      break;
-    case ANIM_SECONDS:
-      if (s_display_seconds) {
-        layer_mark_dirty(s_second_layer);
-        s_anim_timer = app_timer_register(50, anim_timer_callback, NULL);
-      } else {
-        s_anim_state = ANIM_DONE;
-      }
-      break;
-    default:
-      break;
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Tick handler
 // ---------------------------------------------------------------------------
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  if (s_anim_state == ANIM_IDLE) {
-    s_anim_state = ANIM_START;
-    s_anim_timer = app_timer_register(50, anim_timer_callback, NULL);
-    return;
-  }
-
-  if (s_anim_state != ANIM_DONE) {
-    return;
-  }
-
   s_tick_time = *tick_time;
 
   bool is_new_minute;
@@ -928,10 +824,6 @@ static void init(void) {
 }
 
 static void deinit(void) {
-  if (s_anim_timer) {
-    app_timer_cancel(s_anim_timer);
-    s_anim_timer = NULL;
-  }
   tick_timer_service_unsubscribe();
   battery_state_service_unsubscribe();
   health_service_events_unsubscribe();
