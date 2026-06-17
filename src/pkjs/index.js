@@ -2,7 +2,14 @@ var Clay = require('pebble-clay');
 var clayConfig = require('./config');
 var clay = new Clay(clayConfig);
 
-var useFahrenheit = false;
+function getUseFahrenheit() {
+  try {
+    var settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
+    return !!JSON.parse(settings.useFahrenheit);
+  } catch (e) {
+    return false;
+  }
+}
 
 function wmoToCondition(code) {
   if (code === 0)                                return 0;
@@ -17,7 +24,7 @@ function wmoToCondition(code) {
 }
 
 function fetchWeather(latitude, longitude) {
-  var unit = useFahrenheit ? 'fahrenheit' : 'celsius';
+  var unit = getUseFahrenheit() ? 'fahrenheit' : 'celsius';
   var url = 'https://api.open-meteo.com/v1/forecast' +
     '?latitude=' + latitude +
     '&longitude=' + longitude +
@@ -67,14 +74,5 @@ function requestWeather() {
 Pebble.addEventListener('ready', function() {
   console.log('PebbleKit JS ready');
   requestWeather();
-  // Refresh weather every 30 minutes while the phone app is alive
   setInterval(requestWeather, 30 * 60 * 1000);
-});
-
-Pebble.addEventListener('appmessage', function(e) {
-  console.log('AppMessage received from watch: ' + JSON.stringify(e.payload));
-  if (e.payload.useFahrenheit !== undefined) {
-    useFahrenheit = !!e.payload.useFahrenheit;
-    requestWeather();
-  }
 });
