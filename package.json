@@ -1,0 +1,10 @@
+{
+  "name": "modern-pt2-watchface",
+  "version": "4.0.0",
+  "description": "Modern analog watchface for Pebble",
+  "author": "flecmart",
+  "license": "MIT",
+  "dependencies": {
+    "pebble-clay": "^1.4.0"
+  }
+}

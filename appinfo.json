@@ -1,0 +1,51 @@
+{
+  "uuid": "c3a1f27e-84d5-4b9c-a6e2-1f03d7b85c42",
+  "shortName": "Modern PT2",
+  "longName": "Modern PT2",
+  "companyName": "flecmart",
+  "versionLabel": "4.0.0",
+  "sdkVersion": "3",
+  "targetPlatforms": ["aplite", "basalt", "chalk", "diorite", "emery"],
+  "watchapp": {
+    "watchface": true
+  },
+  "appKeys": {
+    "leftSlot": 0,
+    "rightSlot": 1,
+    "bottomSlot": 2,
+    "handStyle": 3,
+    "displaySeconds": 4,
+    "hourVibration": 5,
+    "inverted": 6,
+    "weatherTemperature": 7,
+    "weatherCondition": 8
+  },
+  "resources": {
+    "media": [
+      {
+        "type": "font",
+        "name": "FONT_DIGITALDREAM_NARROW_12",
+        "file": "src/fonts/DIGITALDREAMNARROW.ttf",
+        "characterRegex": "[0-9A-Za-z. :]"
+      },
+      {
+        "type": "font",
+        "name": "FONT_DIGITALDREAM_NARROW_16",
+        "file": "src/fonts/DIGITALDREAMNARROW.ttf",
+        "characterRegex": "[0-9A-Za-z. :]"
+      },
+      {
+        "type": "font",
+        "name": "FONT_ORBITRON_MEDIUM_12",
+        "file": "src/fonts/orbitron-medium.otf",
+        "characterRegex": "[0-9]"
+      },
+      {
+        "type": "font",
+        "name": "FONT_ORBITRON_MEDIUM_16",
+        "file": "src/fonts/orbitron-medium.otf",
+        "characterRegex": "[0-9]"
+      }
+    ]
+  }
+}
