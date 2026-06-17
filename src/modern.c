@@ -519,10 +519,17 @@ static void apply_accent_color(void) {
   bitmap_layer_set_bitmap(s_logo_layer, s_logo_bitmap);
 
   tint_bitmap(s_heart_bitmap, c);
+  layer_mark_dirty(bitmap_layer_get_layer(s_hr_icon_layer));
+
   for (int i = 0; i < 6; i++)
     tint_bitmap(s_weather_bitmaps[i], c);
+  layer_mark_dirty(bitmap_layer_get_layer(s_weather_icon_layer));
+
   tint_bitmap(s_battery_bitmap, c);
+  layer_mark_dirty(bitmap_layer_get_layer(s_bat_icon_layer));
+
   tint_bitmap(s_steps_bitmap, c);
+  layer_mark_dirty(bitmap_layer_get_layer(s_steps_icon_layer));
 
   layer_mark_dirty(s_battery_bar_layer);
 }
