@@ -80,7 +80,7 @@ module.exports = [
         "options": [
           { "label": "White",          "value": 255 },
           { "label": "Cyan",           "value": 207 },
-          { "label": "Electric Blue",  "value": 195 },
+          { "label": "Light Gray",     "value": 170 },
           { "label": "Mint Green",     "value": 206 },
           { "label": "Green",          "value": 204 },
           { "label": "Yellow",         "value": 252 },
