@@ -3,7 +3,7 @@
   "shortName": "Modern PT2",
   "longName": "Modern PT2",
   "companyName": "flecmart",
-  "versionLabel": "1.1.0",
+  "versionLabel": "1.2.0",
   "sdkVersion": "3",
   "targetPlatforms": ["emery"],
   "enableMultiJS": true,
