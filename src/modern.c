@@ -35,6 +35,7 @@ typedef enum {
 #define PERSIST_HAS_WEATHER    8
 #define PERSIST_USE_FAHRENHEIT 9
 #define PERSIST_ACCENT_COLOR   10
+#define PERSIST_INVERTED_MODE  11
 
 // ---------------------------------------------------------------------------
 // Emery (200x228) constants
@@ -76,6 +77,7 @@ static int       s_weather_cond    = 0;
 static bool      s_has_weather     = false;
 static bool      s_use_fahrenheit  = false;
 static GColor    s_accent_color    = { .argb = 0xFF }; // GColorWhite default
+static bool      s_inverted        = false;
 
 // ---------------------------------------------------------------------------
 // Layer / window globals
@@ -311,6 +313,30 @@ static void position_slot_layers(void) {
 }
 
 // ---------------------------------------------------------------------------
+// Inverted mode helpers
+// ---------------------------------------------------------------------------
+
+static GColor fg_color(void) { return s_inverted ? GColorBlack : GColorWhite; }
+static GColor bg_color(void) { return s_inverted ? GColorWhite : GColorBlack; }
+
+static void invert_bitmap_palette(GBitmap *bmp) {
+  GColor *palette = gbitmap_get_palette(bmp);
+  if (!palette) return;
+  int n = 0;
+  switch (gbitmap_get_format(bmp)) {
+    case GBitmapFormat1BitPalette: n = 2;  break;
+    case GBitmapFormat2BitPalette: n = 4;  break;
+    case GBitmapFormat4BitPalette: n = 16; break;
+    default: return;
+  }
+  for (int i = 0; i < n; i++) {
+    if ((palette[i].argb & 0xC0) == 0xC0) {
+      palette[i].argb = (palette[i].argb & 0xC0) | (~palette[i].argb & 0x3F);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Battery bar (drawn under "pebble" logo on the bitmap)
 // ---------------------------------------------------------------------------
 
@@ -341,24 +367,24 @@ static void battery_bar_update_proc(Layer *layer, GContext *ctx) {
 static void draw_hand_path(GContext *ctx, GPath *path, GPath *diamond) {
   switch (s_hand_style) {
     case HAND_SOLID:
-      graphics_context_set_fill_color(ctx, GColorWhite);
-      graphics_context_set_stroke_color(ctx, GColorBlack);
+      graphics_context_set_fill_color(ctx, fg_color());
+      graphics_context_set_stroke_color(ctx, bg_color());
       gpath_draw_filled(ctx, path);
       gpath_draw_outline(ctx, path);
       break;
 
     case HAND_OUTLINE:
-      graphics_context_set_stroke_color(ctx, GColorWhite);
+      graphics_context_set_stroke_color(ctx, fg_color());
       graphics_context_set_stroke_width(ctx, 3);
       gpath_draw_outline(ctx, path);
       break;
 
     case HAND_DIAMOND:
-      graphics_context_set_fill_color(ctx, GColorWhite);
-      graphics_context_set_stroke_color(ctx, GColorBlack);
+      graphics_context_set_fill_color(ctx, fg_color());
+      graphics_context_set_stroke_color(ctx, bg_color());
       gpath_draw_filled(ctx, path);
       gpath_draw_outline(ctx, path);
-      graphics_context_set_fill_color(ctx, GColorBlack);
+      graphics_context_set_fill_color(ctx, bg_color());
       gpath_draw_filled(ctx, diamond);
       break;
   }
@@ -404,7 +430,7 @@ static void second_update_proc(Layer *layer, GContext *ctx) {
       center.x + SECOND_HAND_LEN * sin_lookup(second_angle) / TRIG_MAX_RATIO,
       center.y - SECOND_HAND_LEN * cos_lookup(second_angle) / TRIG_MAX_RATIO);
 
-  graphics_context_set_stroke_color(ctx, GColorWhite);
+  graphics_context_set_stroke_color(ctx, fg_color());
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_line(ctx, center, tip);
 }
@@ -417,9 +443,9 @@ static void center_update_proc(Layer *layer, GContext *ctx) {
   GRect  bounds = layer_get_bounds(layer);
   GPoint center = grect_center_point(&bounds);
 
-  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_context_set_fill_color(ctx, bg_color());
   graphics_fill_circle(ctx, center, CENTER_OUTER_R);
-  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_context_set_fill_color(ctx, fg_color());
   graphics_fill_circle(ctx, center, CENTER_INNER_R);
 }
 
@@ -534,6 +560,25 @@ static void apply_accent_color(void) {
   layer_mark_dirty(s_battery_bar_layer);
 }
 
+static void apply_inverted_mode(void) {
+  window_set_background_color(s_window, bg_color());
+
+  // Reload the background bitmap so palette inversion starts from the original
+  gbitmap_destroy(s_bg_bitmap);
+  s_bg_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND);
+  if (s_inverted) {
+    invert_bitmap_palette(s_bg_bitmap);
+  }
+  bitmap_layer_set_bitmap(s_bg_bitmap_layer, s_bg_bitmap);
+
+  apply_accent_color();
+
+  layer_mark_dirty(s_hour_layer);
+  layer_mark_dirty(s_minute_layer);
+  layer_mark_dirty(s_second_layer);
+  layer_mark_dirty(s_center_layer);
+}
+
 static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   bool layout_changed  = false;
   bool style_changed   = false;
@@ -583,6 +628,14 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     }
     persist_write_int(PERSIST_ACCENT_COLOR, (int)v);
   }
+  if ((t = dict_find(iter, MESSAGE_KEY_invertedMode))) {
+    bool v = (bool)t->value->int32;
+    if (v != s_inverted) {
+      s_inverted = v;
+      apply_inverted_mode();
+    }
+    persist_write_bool(PERSIST_INVERTED_MODE, v);
+  }
 
   if ((t = dict_find(iter, MESSAGE_KEY_weatherTemperature))) {
     s_temperature = (int)t->value->int32;
@@ -628,11 +681,16 @@ static void window_load(Window *window) {
   Layer *root  = window_get_root_layer(window);
   GRect  bounds = layer_get_bounds(root);
 
+  window_set_background_color(window, bg_color());
+
   s_slot_font = fonts_load_custom_font(resource_get_handle(
       RESOURCE_ID_FONT_DIGITALDREAM_NARROW_16));
 
   // Bitmap background
   s_bg_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND);
+  if (s_inverted) {
+    invert_bitmap_palette(s_bg_bitmap);
+  }
   s_bg_bitmap_layer = bitmap_layer_create(bounds);
   bitmap_layer_set_bitmap(s_bg_bitmap_layer, s_bg_bitmap);
   bitmap_layer_set_compositing_mode(s_bg_bitmap_layer, GCompOpSet);
@@ -806,6 +864,8 @@ static void load_persisted_settings(void) {
     s_use_fahrenheit = persist_read_bool(PERSIST_USE_FAHRENHEIT);
   if (persist_exists(PERSIST_ACCENT_COLOR))
     s_accent_color = (GColor){ .argb = (uint8_t)persist_read_int(PERSIST_ACCENT_COLOR) };
+  if (persist_exists(PERSIST_INVERTED_MODE))
+    s_inverted = persist_read_bool(PERSIST_INVERTED_MODE);
 }
 
 // ---------------------------------------------------------------------------

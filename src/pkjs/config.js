@@ -73,12 +73,19 @@ module.exports = [
         ]
       },
       {
+        "type": "toggle",
+        "messageKey": "invertedMode",
+        "label": "Inverted Mode",
+        "defaultValue": false
+      },
+      {
         "type": "select",
         "messageKey": "accentColor",
         "label": "Info & Logo Color",
         "defaultValue": 255,
         "options": [
           { "label": "White",          "value": 255 },
+          { "label": "Black",          "value": 192 },
           { "label": "Cyan",           "value": 207 },
           { "label": "Light Gray",     "value": 170 },
           { "label": "Mint Green",     "value": 206 },

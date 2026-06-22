@@ -21,7 +21,8 @@
     "weatherTemperature": 6,
     "weatherCondition": 7,
     "useFahrenheit": 8,
-    "accentColor": 9
+    "accentColor": 9,
+    "invertedMode": 10
   },
   "resources": {
     "media": [
